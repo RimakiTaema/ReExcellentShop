@@ -28,6 +28,7 @@ import su.nightexpress.nightcore.bridge.currency.Currency;
 import su.nightexpress.nightcore.commands.builder.HubNodeBuilder;
 import su.nightexpress.nightcore.commands.command.NightCommand;
 import su.nightexpress.nightcore.config.FileConfig;
+import su.nightexpress.nightcore.integration.currency.CurrencyId;
 import su.nightexpress.nightcore.integration.currency.EconomyBridge;
 import su.nightexpress.nightcore.integration.item.ItemProvider;
 import su.nightexpress.nightcore.locale.entry.MessageLocale;
@@ -163,29 +164,47 @@ public abstract class AbstractModule extends AbstractManager<ShopPlugin> impleme
 
     @Override
     public boolean isEnabledCurrency(@NonNull String id) {
-        return this.definition.getDefaultCurrency().equalsIgnoreCase(id) || this.definition.getEnabledCurrencies()
-            .contains(id) || this.definition.getEnabledCurrencies().contains(ShopPlaceholders.WILDCARD);
+        String rerouted = CurrencyId.reroute(id);
+        return this.isDefaultCurrency(id) ||
+            this.definition.getEnabledCurrencies().contains(id) ||
+            this.definition.getEnabledCurrencies().contains(rerouted) ||
+            this.definition.getEnabledCurrencies().contains(ShopPlaceholders.WILDCARD);
     }
 
     @Override
     @NonNull
     public Currency getDefaultCurrency() {
-        return EconomyBridge.api().getCurrencyOrDummy(this.definition.getDefaultCurrency());
+        return EconomyBridge.api().getCurrencyOrDummy(CurrencyId.reroute(this.definition.getDefaultCurrency()));
     }
 
     @Override
     @NonNull
     public Set<Currency> getEnabledCurrencies() {
-        if (this.definition.getEnabledCurrencies().contains(ShopPlaceholders.WILDCARD)) return EconomyBridge.api()
-            .getCurrencies();
+        Set<Currency> currencies;
+        if (this.definition.getEnabledCurrencies().contains(ShopPlaceholders.WILDCARD)) {
+            currencies = new HashSet<>(EconomyBridge.api().getCurrencies());
+        }
+        else {
+            currencies = this.definition.getEnabledCurrencies().stream()
+                .map(CurrencyId::reroute)
+                .map(EconomyBridge.api()::getCurrency)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
 
-        Set<Currency> currencies = this.definition.getEnabledCurrencies().stream()
-            .map(EconomyBridge.api()::getCurrency)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toCollection(HashSet::new));
+            currencies.add(this.getDefaultCurrency());
+        }
 
-        currencies.add(this.getDefaultCurrency());
         currencies.removeIf(currency -> currency == null || currency.isDummy());
+
+        // Deduplicate currencies that share the same rerouted internal ID (e.g. legacy coinsengine_ vs modern excellenteconomy_)
+        Set<String> presentIds = currencies.stream()
+            .map(Currency::getInternalId)
+            .collect(Collectors.toSet());
+
+        currencies.removeIf(currency -> {
+            String rerouted = CurrencyId.reroute(currency.getInternalId());
+            return !rerouted.equalsIgnoreCase(currency.getInternalId()) && presentIds.contains(rerouted);
+        });
 
         return currencies;
     }
