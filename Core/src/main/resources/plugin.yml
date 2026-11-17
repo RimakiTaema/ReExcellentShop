@@ -12,6 +12,7 @@ softdepend:
   - GriefPrevention
   - HuskClaims
   - ExcellentClaims
+  - ExcellentCrates
   - PlaceholderAPI
   - ProtocolLib
   - packetevents

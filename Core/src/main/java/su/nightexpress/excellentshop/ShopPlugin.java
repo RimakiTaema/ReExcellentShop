@@ -41,7 +41,9 @@ import su.nightexpress.nightcore.commands.Commands;
 import su.nightexpress.nightcore.commands.command.NightCommand;
 import su.nightexpress.nightcore.config.FileConfig;
 import su.nightexpress.nightcore.config.PluginDetails;
+import su.nightexpress.nightcore.configuration.codec.ConfigCodecs;
 import su.nightexpress.nightcore.core.config.CoreLang;
+import su.nightexpress.nightcore.integration.item.excellentcrates.ExcellentCratesItemType;
 import su.nightexpress.nightcore.util.Plugins;
 import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
 
@@ -84,6 +86,14 @@ public class ShopPlugin extends NightPlugin implements ModuleContextProvider {
         this.registerLang(ChestLang.class);
     }
 
+    private void registerItemCodecs() {
+        // NightCore's ExcellentCrates item codec reads its type enum through the codec registry,
+        // but no codec is registered for it, which makes saved crate/key products fail to load.
+        if (!ConfigCodecs.isRegistered(ExcellentCratesItemType.class)) {
+            ConfigCodecs.register(ExcellentCratesItemType.class, ConfigCodecs.forEnum(ExcellentCratesItemType.class));
+        }
+    }
+
     @Override
     protected boolean disableCommandManager() {
         return true;
@@ -91,6 +101,8 @@ public class ShopPlugin extends NightPlugin implements ModuleContextProvider {
 
     @Override
     public void enable() {
+        this.registerItemCodecs();
+
         this.loadAPI();
         this.loadCommands();
 
