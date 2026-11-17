@@ -56,6 +56,7 @@ public class ProductOptionsMenu extends AbstractObjectMenu<VirtualProduct> {
 
     private static final IconLocale LOCALE_ITEM = VirtualLang.iconBuilder("UI.Editor.Product.TargetItem")
         .name("Item")
+        .appendCurrent("Handler", ShopPlaceholders.PRODUCT_HANDLER)
         .appendInfo("This is what the player", "receives when " + TagWrappers.GREEN.wrap("buying") + " and gives",
             "away when " + TagWrappers.RED.wrap("selling") + ".").br()
         .appendClick("Drag'n'Drop to replace")
@@ -287,6 +288,9 @@ public class ProductOptionsMenu extends AbstractObjectMenu<VirtualProduct> {
         items.add(MenuItem.button()
             .defaultState(ItemState.builder()
                 .icon(NightItem.fromItemStack(product.getEffectivePreview()).hideAllComponents().localized(LOCALE_ITEM))
+                .displayModifier((ctx, item) -> item.replace(builder -> builder
+                    .with(ShopPlaceholders.PRODUCT_HANDLER, () -> content.getAdaptedItem().getProviderId())
+                ))
                 .action(this::handleProductItem)
                 .build()
             )
@@ -410,6 +414,14 @@ public class ProductOptionsMenu extends AbstractObjectMenu<VirtualProduct> {
 
         product.setContent(content);
         product.getShop().markDirty();
+
+        if (content instanceof ItemContent itemContent) {
+            String providerId = itemContent.getAdaptedItem().getProviderId();
+            if (!providerId.equalsIgnoreCase(ItemProviderKeys.BUKKIT)) {
+                this.module.sendPrefixed(VirtualLang.EDITOR_PRODUCT_HANDLER_NOTIFY, viewer.getPlayer(),
+                    builder -> builder.with(ShopPlaceholders.PRODUCT_HANDLER, () -> providerId));
+            }
+        }
 
         event.getView().setCursor(null);
         viewer.refresh();

@@ -167,6 +167,11 @@ public class VirtualLang implements LangContainer {
         .appendClick("Right-Click to pick")
         .build();
 
+    public static final MessageLocale EDITOR_PRODUCT_HANDLER_NOTIFY = builder("Editor.Product.HandlerNotify")
+        .chatMessage(
+            GRAY.wrap("Item handler set to " + SOFT_YELLOW.wrap(PRODUCT_HANDLER) + ".")
+        );
+
     public static final TextLocale EDITOR_TITLE_SHOP_LIST               = builder("Editor.Title.Shop.List").text(BLACK
         .wrap("Virtual Shop Editor"));
     public static final TextLocale EDITOR_TITLE_SHOP_SETTINGS           = builder("Editor.Title.Shop.Settings").text(

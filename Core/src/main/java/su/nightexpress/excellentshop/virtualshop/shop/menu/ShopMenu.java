@@ -22,6 +22,7 @@ import su.nightexpress.excellentshop.api.product.ContentType;
 import su.nightexpress.excellentshop.api.product.TradeStatus;
 import su.nightexpress.excellentshop.api.product.TradeType;
 import su.nightexpress.excellentshop.api.transaction.ERawTransaction;
+import su.nightexpress.excellentshop.product.content.ItemContent;
 import su.nightexpress.excellentshop.shop.formatter.ProductFormatter;
 import su.nightexpress.excellentshop.virtualshop.VirtualShopModule;
 import su.nightexpress.excellentshop.virtualshop.core.VirtualLang;
@@ -33,6 +34,7 @@ import su.nightexpress.excellentshop.virtualshop.shop.VirtualShop;
 import su.nightexpress.nightcore.bridge.currency.Currency;
 import su.nightexpress.nightcore.config.FileConfig;
 import su.nightexpress.nightcore.core.config.CoreLang;
+import su.nightexpress.nightcore.integration.item.ItemProviderKeys;
 import su.nightexpress.nightcore.locale.entry.IconLocale;
 import su.nightexpress.nightcore.ui.inventory.action.ActionContext;
 import su.nightexpress.nightcore.ui.inventory.action.NamedAction;
@@ -487,6 +489,14 @@ public class ShopMenu extends AbstractObjectMenu<ShopMenu.Data> {
 
         shop.markDirty();
         shop.addProduct(product);
+
+        if (product.getContent() instanceof ItemContent itemContent) {
+            String providerId = itemContent.getAdaptedItem().getProviderId();
+            if (!providerId.equalsIgnoreCase(ItemProviderKeys.BUKKIT)) {
+                this.module.sendPrefixed(VirtualLang.EDITOR_PRODUCT_HANDLER_NOTIFY, context.getPlayer(),
+                    builder -> builder.with(ShopPlaceholders.PRODUCT_HANDLER, () -> providerId));
+            }
+        }
 
         event.getView().setCursor(null);
         context.getViewer().refresh();
