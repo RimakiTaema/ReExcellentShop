@@ -43,6 +43,10 @@ import su.nightexpress.nightcore.config.FileConfig;
 import su.nightexpress.nightcore.config.PluginDetails;
 import su.nightexpress.nightcore.configuration.codec.ConfigCodecs;
 import su.nightexpress.nightcore.core.config.CoreLang;
+import su.nightexpress.nightcore.integration.item.ItemBridge;
+import su.nightexpress.nightcore.integration.item.ItemProvider;
+import su.nightexpress.nightcore.integration.item.ItemProviderKeys;
+import su.nightexpress.nightcore.integration.item.excellentcrates.ExcellentCratesAPIService;
 import su.nightexpress.nightcore.integration.item.excellentcrates.ExcellentCratesItemType;
 import su.nightexpress.nightcore.util.Plugins;
 import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
@@ -94,6 +98,24 @@ public class ShopPlugin extends NightPlugin implements ModuleContextProvider {
         }
     }
 
+    private void logItemIntegrations() {
+        if (!ItemBridge.isAvailable()) return;
+
+        ItemProvider crates = ItemBridge.get().getProvider(ItemProviderKeys.EXCELLENT_CRATES);
+        if (crates == null || !crates.isAvailable()) return;
+
+        // crates-api is not a compile dependency, so resolve the API service reflectively.
+        boolean apiResolved = false;
+        try {
+            apiResolved = ExcellentCratesAPIService.class.getMethod("resolve").invoke(null) != null;
+        }
+        catch (ReflectiveOperationException ignored) {
+        }
+
+        this.info("ExcellentCrates item integration registered (crate/key products supported). API service: " +
+            (apiResolved ? "available" : "NOT available yet"));
+    }
+
     @Override
     protected boolean disableCommandManager() {
         return true;
@@ -119,6 +141,7 @@ public class ShopPlugin extends NightPlugin implements ModuleContextProvider {
         this.shopManager.setup();
 
         this.loadModules();
+        this.logItemIntegrations();
 
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.setup(this);
