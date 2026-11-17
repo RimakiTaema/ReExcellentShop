@@ -130,7 +130,8 @@ public class VirtualShopDefinition implements Writeable {
     }
 
     public void setIcon(@NonNull NightItem icon) {
-        this.icon = icon.copy().setAmount(1);
+        // Drop the source item's name/lore so they don't override the shop's own name/lore.
+        this.icon = icon.copy().ignoreNameAndLore().setAmount(1);
     }
 
     public boolean isPermissionRequired() {
