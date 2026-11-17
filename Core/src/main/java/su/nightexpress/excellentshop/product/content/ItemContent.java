@@ -15,6 +15,7 @@ import su.nightexpress.excellentshop.util.ErrorHandler;
 import su.nightexpress.excellentshop.util.ShopUtils;
 import su.nightexpress.nightcore.bridge.item.AdaptedItem;
 import su.nightexpress.nightcore.config.FileConfig;
+import su.nightexpress.nightcore.integration.item.ItemProviderKeys;
 import su.nightexpress.nightcore.integration.item.bukkit.BukkitItem;
 import su.nightexpress.nightcore.integration.item.codec.AdaptedItemCodec;
 import su.nightexpress.nightcore.util.ItemTag;
@@ -35,11 +36,21 @@ public class ItemContent extends ProductContent {
     @Nullable
     public static ItemContent read(@NonNull FileConfig config, @NonNull String path) throws ProductLoadException {
         updateVanillaConfig(config, path);
+        updateProviderConfig(config, path);
 
         AdaptedItem adaptedItem = AdaptedItemCodec.read(config, path + ".Item");
         boolean compareNbt = config.getBoolean(path + ".Item.CompareNBT");
 
         return new ItemContent(adaptedItem, compareNbt);
+    }
+
+    private static void updateProviderConfig(@NonNull FileConfig config, @NonNull String path) {
+        if (config.contains(path + ".Item.Provider")) return;
+
+        // Items saved by older versions stored only the provider codec data, without the provider key.
+        if (config.contains(path + ".Item.item_id")) {
+            config.set(path + ".Item.Provider", ItemProviderKeys.EXCELLENT_CRATES);
+        }
     }
 
     private static void updateVanillaConfig(@NonNull FileConfig config, @NonNull String path) {
@@ -64,14 +75,14 @@ public class ItemContent extends ProductContent {
             config.remove(path + ".Item_Meta_Enabled");
 
             BukkitItem vanillaStack = new BukkitItem(tag);
-            config.set(path + ".Item", vanillaStack);
+            AdaptedItemCodec.write(config, path + ".Item", vanillaStack);
             config.set(path + ".Item.CompareNBT", respectMeta);
         }
     }
 
     @Override
     public void write(@NonNull FileConfig config, @NonNull String path) {
-        config.set(path + ".Item", this.adaptedItem);
+        AdaptedItemCodec.write(config, path + ".Item", this.adaptedItem);
         config.set(path + ".Item.CompareNBT", this.compareNbt);
     }
 

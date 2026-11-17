@@ -2,6 +2,8 @@ package su.nightexpress.excellentshop.data.serialize;
 
 import java.lang.reflect.Type;
 
+import org.bukkit.inventory.ItemStack;
+
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
@@ -12,6 +14,7 @@ import com.google.gson.JsonSerializer;
 
 import su.nightexpress.excellentshop.product.content.ItemContent;
 import su.nightexpress.nightcore.bridge.item.AdaptedItem;
+import su.nightexpress.nightcore.integration.item.ItemBridge;
 import su.nightexpress.nightcore.integration.item.bukkit.BukkitItem;
 import su.nightexpress.nightcore.util.ItemTag;
 
@@ -21,25 +24,25 @@ public class ItemProductTypeSerializer implements JsonSerializer<ItemContent>, J
     public ItemContent deserialize(JsonElement json, Type typeOfT,
                                    JsonDeserializationContext context) throws JsonParseException {
         JsonObject object = json.getAsJsonObject();
+        if (!object.has("itemTag")) return null;
 
-        /* if (object.has("adapter")) {
-            String adapterName = object.get("adapter").getAsString();
-            ItemProvider adapter = ItemBridge.get().getProvider(adapterName);
-            if (!(adapter instanceof BaseIdentifiableItemProvider itemAdapter)) return null;
-        
-            String itemId = object.get("itemId").getAsString();
-            int amount = object.get("amount").getAsInt();
-        
-            return new ItemContent(new BaseProviderDataItem<ItemIdData>(new ItemIdData(itemId, amount)), true);
-        }
-        else  */if (object.has("itemTag")) {
-            String itemTag = object.get("itemTag").getAsString();
-            int dataVersion = object.get("dataVersion").getAsInt();
+        String itemTag = object.get("itemTag").getAsString();
+        int dataVersion = object.get("dataVersion").getAsInt();
 
-            return new ItemContent(new BukkitItem(new ItemTag(itemTag, dataVersion)), true);
+        ItemTag tag = new ItemTag(itemTag, dataVersion);
+        ItemStack itemStack = tag.getItemStack();
+        if (itemStack == null) return new ItemContent(new BukkitItem(tag), true);
+
+        if (object.has("amount")) {
+            itemStack.setAmount(Math.max(1, object.get("amount").getAsInt()));
         }
 
-        return null;
+        // Let the item bridge resolve the original provider (e.g. ExcellentCrates) from the item data.
+        AdaptedItem adaptedItem = object.has("provider") && ItemBridge.isAvailable()
+            ? ItemBridge.get().adapt(itemStack).orElseGet(() -> new BukkitItem(tag))
+            : new BukkitItem(tag);
+
+        return new ItemContent(adaptedItem, true);
     }
 
     @Override
@@ -50,12 +53,19 @@ public class ItemProductTypeSerializer implements JsonSerializer<ItemContent>, J
         if (adaptedItem instanceof BukkitItem vanillaStack) {
             object.addProperty("itemTag", vanillaStack.getData().getTag());
             object.addProperty("dataVersion", vanillaStack.getData().getDataVersion());
+            return object;
         }
-        /* else if (adaptedItem instanceof AdaptedCustomStack customStack) {
-            object.addProperty("adapter", customStack.getAdapter().getName());
-            object.addProperty("itemId", customStack.getData().getItemId());
-            object.addProperty("amount", customStack.getAmount());
-        } */
+
+        ItemStack itemStack = adaptedItem.getItemStack();
+        if (itemStack == null) return object;
+
+        itemStack.setAmount(adaptedItem.getAmount());
+        ItemTag tag = ItemTag.of(itemStack);
+
+        object.addProperty("provider", adaptedItem.getProviderId());
+        object.addProperty("itemTag", tag.getTag());
+        object.addProperty("dataVersion", tag.getDataVersion());
+        object.addProperty("amount", adaptedItem.getAmount());
 
         return object;
     }
